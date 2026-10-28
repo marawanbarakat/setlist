@@ -1,0 +1,914 @@
+<title>Concert Set List</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Work+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one arrangement board per song, lanes = players and Ableton, sections across the top, then a per-player cue sheet. Single dark look by choice. */
+:root {
+  --bg: #1a1512;
+  --surface: #241d18;
+  --line: #3a2f27;
+  --fg: #ede4d3;
+  --muted: #a39582;
+  --accent: #d39a5c;
+  --ab-1: #4f3826;
+  --ab-2: #7d5634;
+  --ab-3: #66584a;
+  --mar: #d39a5c;
+  --she: #ebdfc8;
+  --amr: #9cab8a;
+  --ink: #1f1813;
+  --display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+  --body: "Work Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+header { display: flex; flex-direction: column; gap: 10px; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+h1 { font-family: var(--display); font-weight: 500; font-size: clamp(34px, 5vw, 52px); line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 500; font-size: clamp(28px, 3.6vw, 40px); margin: 0; line-height: 1.1; }
+h3 { margin: 0; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.lede { color: var(--muted); max-width: 62ch; margin: 0; }
+
+.setlist { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.setlist li { display: flex; }
+.setlist button { font: inherit; color: var(--fg); background: transparent; display: flex; align-items: baseline; gap: 10px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.setlist button:hover { border-color: var(--muted); }
+.setlist button[aria-selected="true"] { border-color: var(--accent); background: var(--surface); }
+.setlist button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.song-title { display: flex; flex-direction: column; gap: 10px; min-width: 0; max-width: 72ch; }
+.blurb { margin: 0; font-size: 16px; color: var(--fg); }
+.meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.meta-row li { font-size: 12.5px; color: var(--muted); padding: 4px 10px; border-radius: 4px; background: var(--surface); }
+.meta-row li b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.setlist .n { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; font-size: 13px; }
+.setlist .todo { color: var(--muted); font-style: italic; }
+
+.song { display: flex; flex-direction: column; gap: 22px; }
+.song-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+.song-head .meta { color: var(--muted); font-size: 13px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: inherit; font-size: 13px; font-weight: 500; color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px 6px 10px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.chip .dot { width: 10px; height: 10px; border-radius: 50%; }
+.chip[aria-pressed="true"] { border-color: var(--fg); background: var(--surface); }
+.chip:focus-visible, .setlist a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.board-scroll { overflow-x: auto; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.board { min-width: 1240px; display: grid; grid-template-columns: 132px 1fr; padding-block: 18px; }
+.label { position: sticky; left: 0; z-index: 2; background: var(--bg); display: flex; flex-direction: column; justify-content: center; padding-right: 14px; min-height: 52px; }
+.label b { font-weight: 600; font-size: 14px; }
+.label span { font-size: 12px; color: var(--muted); }
+.label.sub b { font-weight: 500; color: var(--muted); font-size: 13px; }
+.track { position: relative; min-height: 64px; }
+.track .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); opacity: .55; }
+
+.sections .track { min-height: 46px; }
+.sec { position: absolute; top: 4px; padding: 6px 8px 0 6px; border-top: 2px solid var(--accent); font-size: 12.5px; color: var(--accent); font-weight: 500; line-height: 1.25; }
+.sec small { display: block; color: var(--muted); font-weight: 400; font-size: 11.5px; }
+
+.blk { position: absolute; top: 4px; min-height: 56px; border-radius: 5px; padding: 4px 7px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; line-height: 1.2; transition: opacity .2s; }
+.blk strong { font-size: 12.5px; font-weight: 500; overflow-wrap: anywhere; }
+.blk em { font-style: normal; font-size: 11px; opacity: .8; overflow-wrap: anywhere; }
+.blk.ab1 { background: var(--ab-1); color: var(--fg); }
+.blk.ab2 { background: var(--ab-2); color: var(--fg); }
+.blk.ab3 { background: var(--ab-3); color: var(--fg); }
+.blk.mar { background: var(--mar); color: var(--ink); }
+.blk.she { background: var(--she); color: var(--ink); }
+.blk.amr { background: var(--amr); color: var(--ink); }
+.blk.uni { box-shadow: inset 0 0 0 2px var(--ink); }
+
+.cue { position: absolute; display: flex; align-items: center; gap: 7px; font-size: 12.5px; white-space: nowrap; transform: translateX(-5px); }
+.cue::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
+.cue.r1 { top: 6px; } .cue.r2 { top: 28px; } .cue.r3 { top: 50px; }
+.cues .track { min-height: 56px; }
+
+.board.focus [data-who]:not(.hit) { opacity: .18; }
+.board.focus .label[data-who].hit b { color: var(--accent); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 18px; font-size: 12.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { width: 22px; height: 12px; border-radius: 3px; display: inline-block; }
+
+.sheets { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.sheet { background: var(--surface); border-radius: 8px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; transition: opacity .2s; }
+.sheet .who { display: flex; align-items: center; gap: 10px; }
+.sheet .who .dot { width: 12px; height: 12px; border-radius: 50%; }
+.sheet .who b { font-family: var(--display); font-size: 24px; font-weight: 600; }
+.sheet .who span { color: var(--muted); font-size: 12.5px; }
+.sheet ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.sheet li { display: grid; grid-template-columns: 26px 1fr; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+.sheet li .k { font-variant-numeric: tabular-nums; color: var(--accent); font-size: 12px; font-weight: 600; padding-top: 2px; }
+.sheet li .what { font-weight: 500; font-size: 14px; }
+.sheet li .when { color: var(--muted); font-size: 12.5px; }
+.sheet .open { color: var(--amr); font-size: 13.5px; }
+.sheets.focus .sheet:not(.hit) { opacity: .3; }
+
+.note { color: var(--muted); font-size: 13px; max-width: 70ch; margin: 0; }
+@media (prefers-reduced-motion: reduce) { .blk, .sheet { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Next concert · running order</div>
+    <h1>Set list</h1>
+    <p class="lede">Each song is laid out like the Ableton arrangement: one lane per player plus the backing tracks, so everyone can see what they play, on which instrument and tone, and when. Pick a song below.</p>
+    <ol class="setlist" id="setlist" role="tablist" aria-label="Songs in running order"></ol>
+  </header>
+  <div id="songs"></div>
+</div>
+
+<script>
+const PLAYERS = {
+  ableton: { name: "Ableton", role: "Production / backing", color: "var(--ab-2)" },
+  marawan: { name: "Marawan", role: "Guitar", color: "var(--mar)" },
+  sherif:  { name: "Sherif",  role: "Keys", color: "var(--she)" },
+  amr:     { name: "Amr",     role: "Oud", color: "var(--amr)" }
+};
+
+// Section lengths are relative weights, not bars yet.
+const SONGS = [
+  {
+    title: "3.am",
+    sections: [
+      { name: "Intro", w: 2, sub: "Pads + samples" },
+      { name: "Guitar in", w: 2, sub: "Pad → Rast" },
+      { name: "Piano in", w: 2, sub: "Soft, Rast" },
+      { name: "Groove", w: 1.5, sub: "Drums in" },
+      { name: "Theme", w: 2, sub: "Unison" },
+      { name: "Conversation", w: 4, sub: "Piano ↔ oud" },
+      { name: "Theme ×2", w: 3, sub: "Two unison rounds" },
+      { name: "Ending", w: 1.5, sub: "Final sample" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Pads", sub: true, blocks: [
+        { s: 0, e: 1, what: "Pads", tone: "Intro pad", cls: "ab1" },
+        { s: 1, e: 7, what: "Pad · Rast + church organ", tone: "Pad change on guitar entry", cls: "ab2" }
+      ]},
+      { who: "ableton", label: "Samples", sub: true, blocks: [
+        { s: 0, e: 1, what: "Samples", tone: "Intro", cls: "ab3" },
+        { s: 7, e: 8, what: "Ending sample", tone: "Final", cls: "ab3" }
+      ]},
+      { who: "ableton", label: "Drums", sub: true, blocks: [
+        { s: 3, e: 7, what: "Drum sample", tone: "Runs to the ending", cls: "ab2" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 1, e: 4, what: "Guitar", tone: "Clean · Telawa", cls: "mar" },
+        { s: 4, e: 5, what: "3.am melody", tone: "Unison", cls: "mar uni" },
+        { s: 6, e: 6.5, what: "3.am melody", tone: "Unison · round 1", cls: "mar uni" },
+        { s: 6.5, e: 7, what: "3.am melody", tone: "Unison · round 2", cls: "mar uni" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 2, e: 4, what: "Soft piano", tone: "Rast", cls: "she" },
+        { s: 4, e: 5, what: "3.am melody", tone: "Unison", cls: "she uni" },
+        { s: 5, e: 6, what: "Piano Rast", tone: "Trades phrases with oud", cls: "she" },
+        { s: 6, e: 6.5, what: "3.am melody", tone: "Unison · round 1", cls: "she uni" },
+        { s: 6.5, e: 7, what: "3.am melody", tone: "Unison · round 2", cls: "she uni" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 4, e: 5, what: "3.am melody", tone: "Oud clean · unison", cls: "amr uni" },
+        { s: 5, e: 6, what: "Oud clean", tone: "Trades phrases with piano", cls: "amr" },
+        { s: 6, e: 6.5, what: "3.am melody", tone: "Unison · round 1", cls: "amr uni" },
+        { s: 6.5, e: 7, what: "3.am melody", tone: "Unison · round 2", cls: "amr uni" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: pads + samples", row: 1 },
+      { at: 1, text: "Marawan in · pad to Rast + organ", row: 2 },
+      { at: 2, text: "Sherif in", row: 1 },
+      { at: 3, text: "Drums in", row: 2 },
+      { at: 4, text: "Unison theme", row: 1 },
+      { at: 6, text: "Unison ×2", row: 2 },
+      { at: 7, text: "Ending sample", row: 1 }
+    ]
+  },
+  {
+    title: "Dorian Dream",
+    sections: [
+      { name: "Intro", w: 1.5, sub: "First sample" },
+      { name: "Ney", w: 2, sub: "Marawan solo" },
+      { name: "Taqsim", w: 2.5, sub: "Amr, Bayati" },
+      { name: "Theme ×2", w: 3, sub: "Drums in, unison" },
+      { name: "Synth solo", w: 4, sub: "Sherif" },
+      { name: "Melody", w: 1.5, sub: "Sherif ends solo" },
+      { name: "Theme", w: 1.5, sub: "Band joins" },
+      { name: "Oud solo", w: 4, sub: "Amr, driven" },
+      { name: "Theme", w: 1.5, sub: "Amr out, band in" },
+      { name: "Guitar solo", w: 3, sub: "Marawan" },
+      { name: "End", w: 1.2, sub: "Drums end" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Samples", sub: true, blocks: [
+        { s: 0, e: 1, what: "First sample", tone: "Opens the song", cls: "ab3" }
+      ]},
+      { who: "ableton", label: "Drums", sub: true, blocks: [
+        { s: 3, e: 10, what: "Drums", tone: "In with the theme", cls: "ab2" },
+        { s: 10, e: 11, what: "Drum ending", tone: "Song ends", cls: "ab1" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 1, e: 2, what: "Solo", tone: "Ney", cls: "mar" },
+        { s: 3, e: 4, what: "Main melody ×2", tone: "Guitar · unison", cls: "mar uni" },
+        { s: 4, e: 5, what: "Responds to Sherif", tone: "Ebow", cls: "mar" },
+        { s: 6, e: 7, what: "Main melody", tone: "Unison", cls: "mar uni" },
+        { s: 7, e: 8, what: "Responds to Amr", tone: "Guitar", cls: "mar" },
+        { s: 8, e: 9, what: "Main melody", tone: "Unison", cls: "mar uni" },
+        { s: 9, e: 10, what: "Final solo", tone: "Guitar", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 2, e: 3, what: "Bayati taqsim", tone: "Crazy delay", cls: "amr" },
+        { s: 3, e: 4, what: "Main melody ×2", tone: "Unison", cls: "amr uni" },
+        { s: 4, e: 6, what: "Main melody, low volume", tone: "Under Sherif's solo", cls: "amr" },
+        { s: 6, e: 7, what: "Main melody", tone: "Unison", cls: "amr uni" },
+        { s: 7, e: 8, what: "Oud solo", tone: "Driven oud", cls: "amr" },
+        { s: 8, e: 9, what: "Main melody", tone: "Leads out of solo", cls: "amr uni" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 3, e: 4, what: "Main melody ×2", tone: "Piano · unison", cls: "she uni" },
+        { s: 4, e: 5, what: "Solo", tone: "Shpongle synth", cls: "she" },
+        { s: 5, e: 6, what: "Main melody ×1", tone: "Ends the solo", cls: "she" },
+        { s: 6, e: 7, what: "Main melody", tone: "Unison", cls: "she uni" },
+        { s: 7, e: 8, what: "Responds to Amr", tone: "Piano", cls: "she" },
+        { s: 8, e: 9, what: "Main melody", tone: "Unison", cls: "she uni" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: first sample", row: 1 },
+      { at: 1, text: "Marawan: ney", row: 2 },
+      { at: 2, text: "Amr: taqsim", row: 3 },
+      { at: 3, text: "Drums in · theme ×2", row: 1 },
+      { at: 4, text: "Sherif solo · Amr low melody", row: 2 },
+      { at: 5, text: "Sherif plays melody", row: 3 },
+      { at: 6, text: "Band joins", row: 1 },
+      { at: 7, text: "Amr solo", row: 2 },
+      { at: 8, text: "Amr melody · band joins", row: 3 },
+      { at: 9, text: "Marawan solo", row: 1 },
+      { at: 10, text: "Drum ending", row: 2 }
+    ]
+  },
+  {
+    title: "Set ElHabayeb",
+    sections: [
+      { name: "Intro", w: 1.5, sub: "Vocal sample" },
+      { name: "Groove", w: 2, sub: "Drums in, rhythm" },
+      { name: "Guitar solo", w: 3.5, sub: "Marawan" },
+      { name: "Break", w: 2.5, sub: "Ambient, no drums" },
+      { name: "Ebow", w: 3, sub: "Drums back in" },
+      { name: "Oud solo", w: 3, sub: "Amr, to drum fill" },
+      { name: "Synth solo", w: 3.5, sub: "Sherif" },
+      { name: "Build", w: 3, sub: "Amr rhythm heavier" },
+      { name: "Guitar build", w: 3, sub: "Marawan joins, heavier" },
+      { name: "End", w: 1.4, sub: "Drum ending" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Samples", sub: true, blocks: [
+        { s: 0, e: 1, what: "Vocal sample", tone: "Opens the song", cls: "ab3" },
+        { s: 4.5, e: 5, what: "Crash swell", tone: "Into Amr's solo", cls: "ab3" }
+      ]},
+      { who: "ableton", label: "Drums", sub: true, blocks: [
+        { s: 1, e: 3, what: "Drums", tone: "Groove", cls: "ab2" },
+        { s: 4, e: 5, what: "Drums back in", tone: "Under the ebow", cls: "ab2" },
+        { s: 5, e: 6, what: "Drums → fill", tone: "Fill ends Amr's solo", cls: "ab2" },
+        { s: 6, e: 9, what: "Drums", tone: "Through the solos", cls: "ab2" },
+        { s: 9, e: 10, what: "Drum ending", tone: "Song ends", cls: "ab1" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 1, e: 2, what: "Rhythm", tone: "Low volume", cls: "mar" },
+        { s: 2, e: 3, what: "Solo", tone: "Guitar", cls: "mar" },
+        { s: 3, e: 4, what: "Ambient texture", tone: "Minimal, low", cls: "mar" },
+        { s: 4, e: 5, what: "Ebow", tone: "Over the drums", cls: "mar" },
+        { s: 8, e: 9, what: "Solo, building", tone: "Gradually heavier", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 1, e: 3, what: "Rhythm", tone: "Low volume", cls: "amr" },
+        { s: 3, e: 4, what: "Ambient texture", tone: "Minimal, low", cls: "amr" },
+        { s: 5, e: 6, what: "Solo", tone: "Until the drum fill", cls: "amr" },
+        { s: 7, e: 9, what: "Rhythm, building", tone: "Gradually heavier", cls: "amr" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 3, e: 4, what: "Ambient texture", tone: "Minimal, low", cls: "she" },
+        { s: 6, e: 7, what: "Solo", tone: "Synth lead · preset TBD", cls: "she" },
+        { s: 7, e: 10, what: "Solo continues to the end", tone: "Modulates filter, vibrato and dynamics", cls: "she" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: vocal sample" },
+      { at: 1, text: "Drums in · rhythm, low" },
+      { at: 2, text: "Marawan solo" },
+      { at: 3, text: "Break: drums out, ambient" },
+      { at: 4, text: "Drums in · ebow" },
+      { at: 4.5, text: "Crash swell" },
+      { at: 5, text: "Amr solo" },
+      { at: 5.8, text: "Drum fill" },
+      { at: 6, text: "Sherif solo" },
+      { at: 7, text: "Amr rhythm builds" },
+      { at: 8, text: "Marawan joins" },
+      { at: 9, text: "Drum ending" }
+    ]
+  },
+  {
+    title: "First Calling",
+    sections: [
+      { name: "Intro", w: 2, sub: "Om Kalthoum samples" },
+      { name: "Pads", w: 1.5, sub: "Pads in" },
+      { name: "Melody", w: 2.5, sub: "Amr, minor" },
+      { name: "Synth solo", w: 3.5, sub: "Sherif, lyrical" },
+      { name: "Dorian rhythm", w: 2.5, sub: "Amr under the solo" },
+      { name: "Peak", w: 2.5, sub: "Marawan high pads" },
+      { name: "Silence", w: 2, sub: "Street singer sample" },
+      { name: "Build up", w: 3.5, sub: "Sherif solo 2" },
+      { name: "Slow ending", w: 2.5, sub: "Wind down" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Samples", sub: true, blocks: [
+        { s: 0, e: 1, what: "Om Kalthoum samples", tone: "With reverb", cls: "ab3" },
+        { s: 6, e: 7, what: "Street singer sample", tone: "Band silent", cls: "ab3" }
+      ]},
+      { who: "ableton", label: "Pads", sub: true, blocks: [
+        { s: 1, e: 6, what: "Pads", tone: "Until the silence", cls: "ab2" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 5, e: 6, what: "High pads", tone: "At the peak", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 2, e: 3, what: "First melody", tone: "Minor", cls: "amr" },
+        { s: 4, e: 6, what: "Rhythm", tone: "Dorian, under Sherif's solo", cls: "amr" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 3, e: 6, what: "Lyrical solo", tone: "Viral synth · filter modulation", cls: "she" },
+        { s: 7, e: 8, what: "Second solo", tone: "Over the build up", cls: "she" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: Om Kalthoum samples" },
+      { at: 1, text: "Pads in" },
+      { at: 2, text: "Amr melody" },
+      { at: 3, text: "Sherif solo" },
+      { at: 4, text: "Amr Dorian rhythm" },
+      { at: 5, text: "Peak · Marawan pads" },
+      { at: 6, text: "Silence · street singer" },
+      { at: 7, text: "Build up · Sherif solo 2" },
+      { at: 8, text: "Slow ending" }
+    ]
+  },
+  {
+    title: "Remnants",
+    sections: [
+      { name: "Intro", w: 2, sub: "Pads + qanoon sample" },
+      { name: "Melody", w: 3, sub: "Drums auto, oud melody" },
+      { name: "Guitar solo", w: 4, sub: "After the fill" },
+      { name: "New groove", w: 3.5, sub: "Drums change" },
+      { name: "End", w: 1.5, sub: "Cued with drums" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Samples", sub: true, blocks: [
+        { s: 0, e: 1, what: "Qanoon sample", tone: "May be replaced by live oud", cls: "ab3" }
+      ]},
+      { who: "ableton", label: "Pads", sub: true, blocks: [
+        { s: 0, e: 1, what: "Pads", tone: "Intro", cls: "ab1" }
+      ]},
+      { who: "ableton", label: "Drums", sub: true, blocks: [
+        { s: 1, e: 2, what: "Drums · auto cue", tone: "Ends with a fill", cls: "ab2" },
+        { s: 2, e: 3, what: "Drums", tone: "Under the solo", cls: "ab2" },
+        { s: 3, e: 4, what: "Drums change", tone: "New pattern", cls: "ab2" },
+        { s: 4, e: 5, what: "Drum ending", tone: "Cued", cls: "ab1" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 2, e: 4, what: "Solo", tone: "Enters after the fill", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 1, e: 2, what: "Main melody", tone: "Oud", cls: "amr" },
+        { s: 2, e: 4, what: "Main melody, low volume", tone: "Under the guitar solo", cls: "amr" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 2, e: 3, what: "Piano voicings", tone: "Low volume", cls: "she" },
+        { s: 3, e: 4, what: "High choirs or strings", tone: "Added when drums change", cls: "she" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: pads + qanoon" },
+      { at: 1, text: "Drums auto · oud melody" },
+      { at: 1.85, text: "Fill" },
+      { at: 2, text: "Marawan solo" },
+      { at: 3, text: "Drums change · choirs/strings" },
+      { at: 4, text: "Drum ending" }
+    ]
+  },
+  {
+    title: "Exodus",
+    sections: [
+      { name: "Intro", w: 2, sub: "Pads + samples" },
+      { name: "Theme", w: 2.5, sub: "Oud, Dorian" },
+      { name: "Piano solo", w: 3.5, sub: "Sherif, Dorian" },
+      { name: "Drums in", w: 2, sub: "After Sherif's sign" },
+      { name: "Break", w: 1.5, sub: "" },
+      { name: "Full groove", w: 3, sub: "More drums" },
+      { name: "Synth solo", w: 3.5, sub: "Sherif" },
+      { name: "Break", w: 1.5, sub: "" },
+      { name: "Conversation", w: 3.5, sub: "Synth ↔ guitar" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Samples", sub: true, blocks: [
+        { s: 0, e: 1, what: "Samples", tone: "Intro", cls: "ab3" }
+      ]},
+      { who: "ableton", label: "Pads", sub: true, blocks: [
+        { s: 0, e: 1, what: "Pads", tone: "Intro", cls: "ab1" }
+      ]},
+      { who: "ableton", label: "Drums", sub: true, blocks: [
+        { s: 3, e: 4, what: "Drums in", tone: "On Sherif's sign", cls: "ab2" },
+        { s: 5, e: 7, what: "More drums", tone: "Full kit", cls: "ab2" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 5, e: 7, what: "Rhythm", tone: "Guitar", cls: "mar" },
+        { s: 8, e: 9, what: "Conversation", tone: "Trades phrases with synth", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 1, e: 2, what: "Main melody", tone: "Dorian", cls: "amr" },
+        { s: 5, e: 7, what: "Main melody, louder", tone: "Different tone", cls: "amr" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 2, e: 3, what: "Piano solo", tone: "Dorian · signals the end", cls: "she" },
+        { s: 6, e: 7, what: "Synth solo", tone: "Any Colour You Like tone", cls: "she" },
+        { s: 8, e: 9, what: "Conversation", tone: "Synth, trades with guitar", cls: "she" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: pads + samples" },
+      { at: 1, text: "Amr melody" },
+      { at: 2, text: "Sherif piano solo" },
+      { at: 3, text: "Sherif's sign · drums in" },
+      { at: 4, text: "Break" },
+      { at: 5, text: "More drums · rhythm + melody" },
+      { at: 6, text: "Sherif synth solo" },
+      { at: 7, text: "Break" },
+      { at: 8, text: "Synth ↔ guitar" }
+    ]
+  },
+  {
+    title: "Purgatorio",
+    sections: [
+      { name: "Intro", w: 2, sub: "Vocal sample, pads" },
+      { name: "Arghoul solo", w: 5, sub: "Amr, Marawan ebow" },
+      { name: "Intensity", w: 3, sub: "Amr modulates" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Samples", sub: true, blocks: [
+        { s: 0, e: 3, what: "Vocal sample", tone: "In the background throughout", cls: "ab3" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 1, e: 3, what: "Accents the solo", tone: "Ebow", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Arghoul", blocks: [
+        { s: 1, e: 2, what: "Solo", tone: "Arghoul", cls: "amr" },
+        { s: 2, e: 3, what: "Solo continues", tone: "Modulates intensity", cls: "amr" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 0, e: 3, what: "Pads + piano voicings", tone: "Underneath throughout", cls: "she" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: vocal sample · Sherif pads" },
+      { at: 1, text: "Amr arghoul solo · Marawan ebow" },
+      { at: 2, text: "Amr pushes intensity" }
+    ]
+  },
+  {
+    title: "Inferno",
+    sections: [
+      { name: "Intro", w: 1.5, sub: "Sample, all silent" },
+      { name: "Drums", w: 1.5, sub: "Drums start" },
+      { name: "Build 1", w: 3.5, sub: "Sherif in on Marawan's cue" },
+      { name: "Break", w: 1.5, sub: "" },
+      { name: "Build 2", w: 3.5, sub: "Repeat, heavier synth" },
+      { name: "End", w: 1.2, sub: "To confirm" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Samples", sub: true, blocks: [
+        { s: 0, e: 1, what: "Sample", tone: "Band silent", cls: "ab3" }
+      ]},
+      { who: "ableton", label: "Drums", sub: true, blocks: [
+        { s: 1, e: 3, what: "Drums", tone: "Build 1", cls: "ab2" },
+        { s: 4, e: 5, what: "Drums", tone: "Build 2, same as build 1", cls: "ab2" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 2, e: 2.35, what: "Cue", tone: "Sherif in", cls: "mar" },
+        { s: 2.35, e: 3, what: "Rhythm with Amr", tone: "Until the break", cls: "mar" },
+        { s: 4, e: 5, what: "Rhythm with Amr", tone: "Same as build 1", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 1, e: 3, what: "Rhythm", tone: "Until the break", cls: "amr" },
+        { s: 4, e: 5, what: "Rhythm", tone: "Same as build 1", cls: "amr" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 2.35, e: 3, what: "Synth", tone: "Accordion tone", cls: "she" },
+        { s: 4, e: 5, what: "Synth", tone: "Heavier synth tone", cls: "she" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: sample, all silent" },
+      { at: 1, text: "Drums start" },
+      { at: 2, text: "Marawan cues Sherif" },
+      { at: 3, text: "Break" },
+      { at: 4, text: "Repeat build · heavier synth" },
+      { at: 5, text: "Ending?" }
+    ]
+  },
+  {
+    title: "Farhet Nehayet El 3alam",
+    sections: [
+      { name: "Intro", w: 1.5, sub: "Sample, all silent" },
+      { name: "Pads", w: 1.5, sub: "Marawan" },
+      { name: "Rhythm", w: 1.8, sub: "Amr in" },
+      { name: "Guitar solo", w: 3.2, sub: "Marawan" },
+      { name: "Heavy", w: 2.2, sub: "Heavy rhythm" },
+      { name: "Synth solo", w: 3.2, sub: "Sherif, Marawan joins" },
+      { name: "Break", w: 1.4, sub: "Silence" },
+      { name: "Dawama", w: 3.2, sub: "Synth solo + unison" },
+      { name: "Saba solo", w: 3, sub: "Marawan, final" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Samples", sub: true, blocks: [
+        { s: 0, e: 1, what: "Sample", tone: "Band silent", cls: "ab3" },
+        { s: 6.5, e: 7, what: "Sample cue", tone: "Cues Sherif", cls: "ab3" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 1, e: 3, what: "Pads", tone: "Guitar pads", cls: "mar" },
+        { s: 3, e: 4, what: "Solo", tone: "Guitar", cls: "mar" },
+        { s: 4, e: 5, what: "Heavy rhythm", tone: "With Amr", cls: "mar" },
+        { s: 5, e: 6, what: "Joins Sherif's solo", tone: "Until the break", cls: "mar" },
+        { s: 7, e: 8, what: "Main melody", tone: "Unison with Amr", cls: "mar uni" },
+        { s: 8, e: 9, what: "Final solo", tone: "Saba", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 2, e: 3, what: "Rhythm", tone: "Oud", cls: "amr" },
+        { s: 3, e: 4, what: "Same rhythm", tone: "Low volume", cls: "amr" },
+        { s: 4, e: 6, what: "Heavy rhythm", tone: "Until the break", cls: "amr" },
+        { s: 7, e: 8, what: "Main melody", tone: "Unison with Marawan", cls: "amr uni" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 5, e: 6, what: "Synth solo", tone: "Marawan joins", cls: "she" },
+        { s: 7, e: 8, what: "Dawama synth solo", tone: "Filter modulation", cls: "she" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: sample, all silent" },
+      { at: 1, text: "Marawan pads" },
+      { at: 2, text: "Amr rhythm" },
+      { at: 3, text: "Marawan solo · Amr low" },
+      { at: 4, text: "Heavy rhythm" },
+      { at: 5, text: "Sherif solo · Marawan joins" },
+      { at: 6, text: "Break, silence" },
+      { at: 6.5, text: "Sample cues Sherif" },
+      { at: 7, text: "Dawama · unison melody" },
+      { at: 8, text: "Saba solo" }
+    ]
+  },
+  {
+    title: "The Last Judgement",
+    sections: [
+      { name: "Intro", w: 2.5, sub: "Sherif, jazz minor ii V I" },
+      { name: "Ambience", w: 2.5, sub: "Sample, pads, chords" },
+      { name: "Oud in", w: 2.5, sub: "Amr on the chords" },
+      { name: "Guitar solo", w: 5, sub: "After drum cue" },
+      { name: "Ending", w: 2, sub: "To be decided" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Samples", sub: true, blocks: [
+        { s: 1, e: 4, what: "Ambience sample", tone: "Enters after the intro", cls: "ab3" }
+      ]},
+      { who: "ableton", label: "Pads", sub: true, blocks: [
+        { s: 1, e: 4, what: "Pads + chords", tone: "Backing", cls: "ab1" }
+      ]},
+      { who: "ableton", label: "Drums", sub: true, blocks: [
+        { s: 3, e: 4, what: "Drums", tone: "Cued in", cls: "ab2" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 3, e: 4, what: "Solo", tone: "Guitar", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 2, e: 4, what: "Accompanies the chords", tone: "Oud", cls: "amr" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 0, e: 3, what: "Jazz minor ii V I", tone: "Same intention as the final solo", cls: "she" },
+        { s: 3, e: 4, what: "Choir + strings", tone: "Multi-timbre preset", cls: "she" }
+      ]},
+      { who: "ableton", label: "Ending", sub: true, blocks: [
+        { s: 4, e: 5, what: "Ending to be decided", tone: "Open", cls: "ab1" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: Sherif ii V I" },
+      { at: 1, text: "Sample + pads + chords" },
+      { at: 2, text: "Amr in" },
+      { at: 3, text: "Drum cue · Marawan solo · choir/strings" },
+      { at: 4, text: "Ending TBD" }
+    ]
+  },
+  {
+    title: "Hozam Mooled",
+    sections: [
+      { name: "Intro", w: 2, sub: "Marawan samples" },
+      { name: "Drum build", w: 2, sub: "Marawan builds" },
+      { name: "Improv", w: 5, sub: "Whole band, minimal solos" },
+      { name: "Break", w: 1.5, sub: "Everyone silent" },
+      { name: "High dynamic", w: 3, sub: "Full energy" },
+      { name: "End", w: 1.2, sub: "" }
+    ],
+    lanes: [
+      { who: "marawan", label: "Marawan", role: "Samples + guitar", blocks: [
+        { s: 0, e: 1, what: "Plays samples", tone: "Live triggers", cls: "mar" },
+        { s: 1, e: 2, what: "Builds drums", tone: "Layer by layer", cls: "mar" },
+        { s: 2, e: 3, what: "Improv", tone: "Minimal soloing", cls: "mar" },
+        { s: 4, e: 5, what: "High dynamic", tone: "Full band", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 2, e: 3, what: "Improv", tone: "Minimal soloing", cls: "amr" },
+        { s: 4, e: 5, what: "High dynamic", tone: "Full band", cls: "amr" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 2, e: 3, what: "Improv", tone: "Minimal soloing", cls: "she" },
+        { s: 4, e: 5, what: "High dynamic", tone: "Full band", cls: "she" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: Marawan samples" },
+      { at: 1, text: "Drums build" },
+      { at: 2, text: "Improv, keep it minimal" },
+      { at: 3, text: "Break, all silent" },
+      { at: 4, text: "High dynamic" },
+      { at: 5, text: "End" }
+    ]
+  },
+  {
+    title: "Mohsen Mooled",
+    sections: [
+      { name: "Intro", w: 2.5, sub: "Ambient" },
+      { name: "Break", w: 1.5, sub: "Marawan launches drums" },
+      { name: "Main", w: 6, sub: "As in Ala Bab Allah" }
+    ],
+    lanes: [
+      { who: "ableton", label: "Ambience", sub: true, blocks: [
+        { s: 0, e: 1, what: "Ambient", tone: "Intro", cls: "ab1" }
+      ]},
+      { who: "ableton", label: "Drums", sub: true, blocks: [
+        { s: 2, e: 3, what: "Drums", tone: "Launched by Marawan", cls: "ab2" }
+      ]},
+      { who: "marawan", label: "Marawan", role: "Guitar", blocks: [
+        { s: 1, e: 2, what: "Launches drums", tone: "End of the break", cls: "mar" },
+        { s: 2, e: 3, what: "Same part as Ala Bab Allah", tone: "Guitar", cls: "mar" }
+      ]},
+      { who: "amr", label: "Amr", role: "Oud", blocks: [
+        { s: 2, e: 3, what: "Same part as Ala Bab Allah", tone: "Oud", cls: "amr" }
+      ]},
+      { who: "sherif", label: "Sherif", role: "Keys", blocks: [
+        { s: 2, e: 3, what: "Kawla line", tone: "Heavy synth", cls: "she" }
+      ]}
+    ],
+    cues: [
+      { at: 0, text: "Go: ambient" },
+      { at: 1, text: "Break · Marawan launches drums" },
+      { at: 2, text: "Ala Bab Allah arrangement · Sherif kawla line" }
+    ]
+  }
+];
+
+const UPCOMING = ["Next song", "…"];
+
+function el(tag, attrs = {}, html = "") {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (html) n.innerHTML = html;
+  return n;
+}
+
+const BLURBS = {
+  "3.am": "A slow, nocturnal opener that grows from pads and samples into Rast, with piano and oud trading phrases before the 3.am melody comes back twice in unison.",
+  "Dorian Dream": "A solo-driven journey: Marawan's ney and Amr's delayed Bayati taqsim set the scene, then every player gets a solo between unison statements of the main melody.",
+  "Set ElHabayeb": "A groove piece built on low rhythm and solos, with an ambient break in the middle and a long build that gets heavier until the drum ending.",
+  "First Calling": "An atmospheric piece that opens on Om Kalthoum samples, rises through Sherif's lyrical synth solo to a peak, drops to a street singer sample, then builds once more before a slow ending.",
+  "Remnants": "A melodic piece led by the oud, with Marawan soloing over a quiet bed of oud melody and piano, lifting into choirs or strings when the drums change.",
+  "Exodus": "A Dorian piece in two halves: an open piano solo first, then a fuller groove with Sherif's synth solo and a closing conversation between synth and guitar.",
+  "Purgatorio": "A sparse, meditative piece where Amr's arghoul solo carries everything over a vocal sample, Sherif's pads and Marawan's ebow.",
+  "Inferno": "A build-up piece played twice: the same sections repeat after the break, with Sherif moving from an accordion tone to a heavier synth.",
+  "Farhet Nehayet El 3alam": "The most eventful piece of the set, moving from guitar pads and a solo into heavy rhythm, a synth solo, a silent break, a Dawama section in unison and a final Saba solo.",
+  "The Last Judgement": "A darker, harmonic piece that starts on Sherif's jazz minor ii V I and opens into Marawan's guitar solo over choir and strings. The ending is still open.",
+  "Hozam Mooled": "A free, improvised piece that Marawan drives from samples and drums, with the whole band keeping the soloing minimal before a silent break and a high-energy finish.",
+  "Mohsen Mooled": "An ambient opening that breaks into the Ala Bab Allah arrangement, with Sherif taking the kawla line on heavy synth."
+};
+
+function songMeta(song) {
+  const players = new Set(song.lanes.filter(l => l.who !== "ableton").map(l => l.who));
+  const soloists = [];
+  song.lanes.forEach(l => {
+    if (l.who === "ableton") return;
+    if (l.blocks.some(b => /solo/i.test(b.what) && !/join|respond/i.test(b.what)) && !soloists.includes(l.who)) soloists.push(l.who);
+  });
+  const backing = song.lanes.some(l => l.who === "ableton");
+  const opener = song.sections[0].sub;
+  const last = song.sections[song.sections.length - 1];
+  const items = [
+    `<b>${song.sections.length}</b> sections`,
+    `<b>${players.size}</b> players${backing ? " + Ableton" : ""}`,
+    soloists.length ? `Solos: <b>${soloists.map(w => PLAYERS[w].name).join(", ")}</b>` : "No set solos",
+    `Opens: <b>${opener}</b>`,
+    `Ends: <b>${last.sub || last.name}</b>`
+  ];
+  return `<ul class="meta-row">${items.map(t => `<li>${t}</li>`).join("")}</ul>`;
+}
+
+function renderSetlist() {
+  const ol = document.getElementById("setlist");
+  SONGS.forEach((s, i) => {
+    const li = el("li", { role: "presentation" });
+    li.append(el("button", { role: "tab", id: `tab-${i}`, "aria-controls": `song-${i}`, "aria-selected": "false", "data-i": i }, `<span class="n">${String(i + 1).padStart(2, "0")}</span><span>${s.title}</span>`));
+    ol.append(li);
+  });
+}
+
+function renderSong(song, idx) {
+  const starts = []; let acc = 0;
+  song.sections.forEach(s => { starts.push(acc); acc += s.w; });
+  const total = acc;
+  // position at section index (fractional allowed)
+  const pos = x => {
+    const i = Math.floor(x), f = x - i;
+    if (i >= song.sections.length) return 100;
+    return (starts[i] + f * song.sections[i].w) / total * 100;
+  };
+  const gridLines = track => starts.slice(1).forEach(st => {
+    const g = el("div", { class: "grid" }); g.style.left = (st / total * 100) + "%"; track.append(g);
+  });
+
+  const wrap = el("section", { class: "song", id: `song-${idx}`, role: "tabpanel", "aria-labelledby": `tab-${idx}` });
+  const head = el("div", { class: "song-head" });
+  head.append(el("div", { class: "song-title" }, `<div class="eyebrow">Song ${idx + 1} of ${SONGS.length}</div><h2>${song.title}</h2>${BLURBS[song.title] ? `<p class="blurb">${BLURBS[song.title]}</p>` : ""}${songMeta(song)}`));
+  const chips = el("div", { class: "chips", role: "group", "aria-label": "Highlight a player" });
+  head.append(chips);
+  wrap.append(head);
+
+  const scroll = el("div", { class: "board-scroll" });
+  const board = el("div", { class: "board" });
+  scroll.append(board);
+
+  // sections header
+  board.append(el("div", { class: "label" }, `<span>Section</span>`));
+  const secTrack = el("div", { class: "track" });
+  secTrack.parentClass = "sections";
+  song.sections.forEach((s, i) => {
+    const d = el("div", { class: "sec" }, `${s.name}<small>${s.sub}</small>`);
+    d.style.left = pos(i) + "%"; d.style.width = `calc(${s.w / total * 100}% - 4px)`;
+    secTrack.append(d);
+  });
+  const secRowWrap = el("div", { class: "sections", style: "display:contents" });
+  board.append(secTrack); secTrack.classList.add("sec-track");
+  secTrack.style.minHeight = "50px";
+
+  let lastWho = null;
+  song.lanes.forEach(lane => {
+    const p = PLAYERS[lane.who];
+    let labelHtml;
+    if (lane.sub) {
+      labelHtml = (lastWho !== lane.who ? `<span>${p.name}</span>` : "") + `<b>${lane.label}</b>`;
+    } else {
+      labelHtml = `<b>${lane.label}</b><span>${lane.role || p.role}</span>`;
+    }
+    const lab = el("div", { class: "label" + (lane.sub ? " sub" : ""), "data-who": lane.who }, labelHtml);
+    lastWho = lane.who;
+    const tr = el("div", { class: "track" });
+    gridLines(tr);
+    lane.blocks.forEach(b => {
+      const d = el("div", { class: "blk " + b.cls, "data-who": lane.who, title: `${b.what} · ${b.tone}` }, `<strong>${b.what}</strong><em>${b.tone}</em>`);
+      d.style.left = `calc(${pos(b.s)}% + 2px)`;
+      d.style.width = `calc(${pos(b.e) - pos(b.s)}% - 4px)`;
+      tr.append(d);
+    });
+    board.append(lab, tr);
+  });
+
+  // cues
+  board.append(el("div", { class: "label" }, `<b>Cues</b><span>Who watches what</span>`));
+  const cueTrack = el("div", { class: "track" });
+  cueTrack.classList.add("cue-track");
+  gridLines(cueTrack);
+  song.cues.forEach(c => {
+    const d = el("div", { class: "cue" }, c.text);
+    d.style.left = `calc(${pos(c.at)}% + 5px)`;
+    cueTrack.append(d);
+  });
+  board.append(cueTrack);
+  wrap.append(scroll);
+
+  const legend = el("div", { class: "legend" },
+    `<span><i style="background:var(--ab-2)"></i>Ableton backing</span>
+     <span><i style="background:var(--mar)"></i>Marawan</span>
+     <span><i style="background:var(--she)"></i>Sherif</span>
+     <span><i style="background:var(--amr)"></i>Amr</span>
+     <span><i style="background:var(--she);box-shadow:inset 0 0 0 2px var(--ink)"></i>Outlined block = unison melody</span>`);
+  wrap.append(legend);
+
+  // per-player cue sheets
+  wrap.append(el("h3", {}, "Each player's part, in order"));
+  const sheets = el("div", { class: "sheets" });
+  ["marawan", "amr", "sherif", "ableton"].forEach(who => {
+    const p = PLAYERS[who];
+    const card = el("div", { class: "sheet", "data-who": who });
+    card.append(el("div", { class: "who" }, `<i class="dot" style="background:${p.color}"></i><b>${p.name}</b><span>${p.role}</span>`));
+    const items = [];
+    song.lanes.filter(l => l.who === who).forEach(l => l.blocks.forEach(b => items.push({ ...b, lane: l.label })));
+    items.sort((a, b) => a.s - b.s);
+    {
+      const ol = el("ol");
+      items.forEach((b, i) => {
+        const sec = song.sections[Math.floor(b.s)].name;
+        const endSec = song.sections[Math.min(Math.ceil(b.e) - 1, song.sections.length - 1)].name;
+        const when = sec === endSec ? sec : `${sec} → ${endSec}`;
+        const what = who === "ableton" ? `${b.lane}: ${b.what}` : b.what;
+        ol.append(el("li", {}, `<span class="k">${i + 1}</span><span><div class="what">${what} · ${b.tone}</div><div class="when">${when}</div></span>`));
+      });
+      card.append(ol);
+    }
+    sheets.append(card);
+  });
+  wrap.append(sheets);
+  wrap.append(el("p", { class: "note" }, "Section lengths are relative for now. Give me bar counts or timings from the Ableton session and the blocks will line up to scale."));
+
+  // focus chips
+  let current = null;
+  const all = el("button", { class: "chip", id: `chip-${idx}-all`, "aria-pressed": "true" }, "Everyone");
+  chips.append(all);
+  const btns = [all];
+  Object.entries(PLAYERS).forEach(([key, p]) => {
+    const b = el("button", { class: "chip", id: `chip-${idx}-${key}`, "aria-pressed": "false" }, `<i class="dot" style="background:${p.color}"></i>${p.name}`);
+    b.dataset.who = key; chips.append(b); btns.push(b);
+  });
+  const apply = who => {
+    current = who;
+    btns.forEach(b => b.setAttribute("aria-pressed", String((b.dataset.who || null) === who)));
+    board.classList.toggle("focus", !!who); sheets.classList.toggle("focus", !!who);
+    wrap.querySelectorAll("[data-who]").forEach(n => { if (!n.classList.contains("chip")) n.classList.toggle("hit", n.dataset.who === who); });
+  };
+  btns.forEach(b => b.addEventListener("click", () => apply(b.dataset.who && current !== b.dataset.who ? b.dataset.who : null)));
+
+  return wrap;
+}
+
+// Grow each lane to fit its tallest block, and stack cues into rows so none overlap or leave the board.
+function fit(board) {
+  board.querySelectorAll(".track").forEach(tr => {
+    const items = [...tr.querySelectorAll(".blk, .sec")];
+    if (!items.length) return;
+    items.forEach(it => { it.style.height = "auto"; });
+    const h = Math.max(...items.map(i => i.offsetHeight));
+    tr.style.minHeight = (h + 8) + "px";
+    items.forEach(it => { if (it.classList.contains("blk")) it.style.height = h + "px"; });
+  });
+  board.querySelectorAll(".cue-track").forEach(tr => {
+    const W = tr.clientWidth, rows = [];
+    tr.querySelectorAll(".cue").forEach(c => {
+      c.style.transform = "none";
+      const w = c.offsetWidth;
+      let x = c.offsetLeft;
+      if (x + w > W) { x = Math.max(0, W - w); c.style.left = x + "px"; }
+      let r = rows.findIndex(end => end + 14 <= x);
+      if (r < 0) { r = rows.length; rows.push(0); }
+      rows[r] = x + w;
+      c.style.top = (6 + r * 22) + "px";
+    });
+    tr.style.minHeight = (rows.length * 22 + 12) + "px";
+  });
+}
+const fitAll = () => document.querySelectorAll(".song:not([hidden]) .board").forEach(fit);
+
+renderSetlist();
+const host = document.getElementById("songs");
+const panels = SONGS.map((s, i) => { const p = renderSong(s, i); p.hidden = true; host.append(p); return p; });
+const tabs = [...document.querySelectorAll('#setlist [role="tab"]')];
+function show(i) {
+  i = Math.max(0, Math.min(SONGS.length - 1, i));
+  panels.forEach((p, j) => { p.hidden = j !== i; });
+  tabs.forEach((t, j) => { t.setAttribute("aria-selected", String(j === i)); t.tabIndex = j === i ? 0 : -1; });
+  fitAll();
+  try { localStorage.setItem("setlist-tab", String(i)); } catch (e) {}
+}
+tabs.forEach((t, i) => {
+  t.addEventListener("click", () => show(i));
+  t.addEventListener("keydown", e => {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      const n = (i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+      show(n); tabs[n].focus(); e.preventDefault();
+    }
+  });
+});
+let start = 0;
+try { const v = parseInt(localStorage.getItem("setlist-tab"), 10); if (!isNaN(v)) start = v; } catch (e) {}
+show(start);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitAll);
+window.addEventListener("resize", fitAll);
+</script>
